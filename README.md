@@ -14,8 +14,12 @@ Spanish and Japanese.
 
 **Live demo:** https://anti-waste-recipes.streamlit.app/ · *Version française : [docs/README.fr.md](docs/README.fr.md)*
 
-<!-- Screenshot or GIF: add docs/screenshots/demo.gif, then uncomment the next line. -->
-<!-- ![Demo](docs/screenshots/demo.gif) -->
+<p align="center"><img src="docs/screenshots/demo.gif" width="900" alt="Cook Factory demo"></p>
+
+| Search | Recipe and chef | Meal planner |
+|---|---|---|
+| ![Search](docs/screenshots/results2.png) | ![Recipe](docs/screenshots/recipe2.png) | ![Planner](docs/screenshots/planner2.png) |
+
 
 ## Why it is different
 
