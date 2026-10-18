@@ -15,6 +15,7 @@ from src.validation import validate_craving
 from src.visuals import GLYPHS, cover_html
 
 SHOWN = 12
+MAX_SHOWN = 96
 SEMANTIC_POOL = 60
 COLUMNS = 4
 LIGHT_KCAL = 400
@@ -31,7 +32,8 @@ def _filters(diets: tuple, max_minutes, max_calories) -> Filters:
 
 
 @st.cache_data(show_spinner=False, max_entries=64)
-def cached_search(_retriever, wanted, basics, diets, max_minutes, max_calories, max_missing, precision):
+def cached_search(_retriever, wanted, basics, diets, max_minutes, max_calories, max_missing, precision,
+                  shown=SHOWN):
     """Mis en cache : changer de fiche ou de page ne relance pas le calcul."""
     staples = STAPLES if basics else frozenset()
     found = _retriever.catalog.search(
@@ -39,11 +41,11 @@ def cached_search(_retriever, wanted, basics, diets, max_minutes, max_calories, 
         staples=staples,
         filters=_filters(diets, max_minutes, max_calories),
         max_missing=max_missing,
-        limit=SEMANTIC_POOL if precision else SHOWN,
+        limit=max(SEMANTIC_POOL, shown) if precision else shown,
     )
     if precision:
         found = _retriever.semantic_rank(precision, found)
-    return found[:SHOWN]
+    return found[:shown]
 
 
 @st.cache_data(show_spinner=False, max_entries=64)
@@ -65,6 +67,18 @@ def add_boost(item: str) -> None:
 
 def clear_boost() -> None:
     st.session_state["boost"] = []
+
+
+def show_more() -> None:
+    st.session_state["shown"] = min(st.session_state["shown"] + SHOWN, MAX_SHOWN)
+
+
+def set_shopping(code: str) -> None:
+    """Change le filtre d'achats depuis un bouton : le widget, recree, reprend la preference."""
+    st.session_state.update(pref_shopping=code, shown=SHOWN)
+    for key in [k for k in st.session_state if str(k).startswith("w_pref_shopping_")]:
+        del st.session_state[key]
+    scroll_to("cards")
 
 
 def status_badge(recipe: dict, extra_class: str = "") -> str:
@@ -119,7 +133,8 @@ def render_results(results: list[dict], wanted_count: int, names: dict) -> None:
                 with column:
                     recipe = results[index]
                     render_card(str(index), recipe, wanted_count,
-                                names.get(recipe["title"], recipe["title"]), delay_ms=index * 60)
+                                names.get(recipe["title"], recipe["title"]),
+                                delay_ms=index % SHOWN * 60)
 
 
 def render_filters() -> None:
@@ -161,6 +176,13 @@ def render_opportunities(info: dict) -> None:
     purchases = info["purchases"]
     columns = st.columns(2 if purchases else 1, gap="medium")
     columns[0].markdown(ready_html(info["cookable"]), unsafe_allow_html=True)
+    # Le classement met en avant les recettes qui utilisent le plus d'aliments, meme avec un
+    # achat : ce bouton mene aux recettes pretes que l'encadre annonce.
+    if st.session_state["pref_shopping"] == "none":
+        columns[0].button(t("see_all"), on_click=set_shopping, args=("any",), icon=":material/list:")
+    elif info["cookable"]:
+        columns[0].button(t("see_ready"), on_click=set_shopping, args=("none",),
+                          icon=":material/check_circle:")
     if purchases:
         texts = [p["item"] for p in purchases] + [e for p in purchases for e in p["examples"]]
         names = localized(texts)
@@ -187,6 +209,7 @@ def run_search(ingredients_wanted: list[str], craving: str) -> None:
         precision_query=translate_to_english(craving) if craving else "",
         selected=None,
         last_precision=craving,
+        shown=SHOWN,
     )
 
 
@@ -230,18 +253,24 @@ def render_results_section(retriever) -> None:
     )
     results = cached_search(
         retriever, wanted, state["pref_basics"], diets, max_minutes, max_calories,
-        SHOPPING_FILTERS[state["pref_shopping"]], state["precision_query"],
+        SHOPPING_FILTERS[state["pref_shopping"]], state["precision_query"], state["shown"],
     )
     if not results:
         st.info(t("no_results"))
         return
-    names = localized([r["title"] for r in results])
+    # Une traduction par page de 12 : « Afficher plus » ne retraduit pas les titres deja vus.
+    names = {}
+    for start in range(0, len(results), SHOWN):
+        names.update(localized([r["title"] for r in results[start:start + SHOWN]]))
     ready = sum(1 for r in results if not r["missing"])
     st.markdown(
-        f'<div class="results-head"><span class="count">{t("results_count", n=len(results), ready=ready)}'
+        f'<div class="results-head" id="cards"><span class="count">'
+        f'{t("results_count", n=len(results), ready=ready)}'
         "</span></div>",
         unsafe_allow_html=True,
     )
     if state["translation_failed"]:
         st.caption(t("translation_unavailable"))
     render_results(results, len(wanted), names)
+    if len(results) == state["shown"] and state["shown"] < MAX_SHOWN:
+        st.button(t("show_more", n=SHOWN), on_click=show_more, key="show_more", icon=":material/expand_more:")

@@ -128,4 +128,7 @@ TEXTS = {
     "buy_tag": "to buy",
     "diets_h": "Suitable diets",
     "diets_note": "Detected automatically: check the labels if you have allergies.",
+    "show_more": "Show {n} more recipes",
+    "see_ready": "See these recipes",
+    "see_all": "Also show recipes that need shopping",
 }

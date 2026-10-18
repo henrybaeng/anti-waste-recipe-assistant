@@ -17,6 +17,7 @@ DEFAULTS = {
     "view": "search",
     "chef_pending": "",
     "scroll_to": "",
+    "shown": 12,
     "scroll_count": 0,
     "searched": False,
     "wanted": [],

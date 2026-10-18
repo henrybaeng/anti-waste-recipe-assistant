@@ -128,4 +128,7 @@ TEXTS = {
     "buy_tag": "à acheter",
     "diets_h": "Régimes compatibles",
     "diets_note": "Détection automatique : vérifiez les étiquettes en cas d'allergie.",
+    "show_more": "Afficher {n} recettes de plus",
+    "see_ready": "Voir ces recettes",
+    "see_all": "Voir aussi les recettes avec achats",
 }
